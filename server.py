@@ -66,6 +66,21 @@ BOOK_MAP = {
     "Peace in the Quran": "Peace-in-the-Quran.pdf",
     "The Ideology of Peace": "The-Ideology-of-Peace.pdf",
     "Islam and Peace": "Islam-and-Peace.pdf",
+    "The True Jihad": "The-True-Jihad.pdf",
+    "The Prophet of Peace": "The-Prophet-of-Peace.pdf",
+    "Quran for All Humanity": "Quran-for-All-Humanity.pdf",
+    "Islam Rediscovered": "Islam-Rediscovered.pdf",
+    "The Moral Vision": "The-Moral-Vision.pdf",
+    "The Good Life": "The-Good-Life.pdf",
+    "Indian Muslims": "Indian-Muslims.pdf",
+    "Woman Between Islam and Western Society": "Woman-Between-Islam-and-Western-Society.pdf",
+    "God Arises": "God-Arises.pdf",
+    "Religion and Science": "Religion-and-Science.pdf",
+    "The Teachings of Islam": "The-Teachings-of-Islam.pdf",
+    "Uniform Civil Code": "Uniform-Civil-Code.pdf",
+    "Muhammad A Prophet For All Humanity": "Muhammad-A-Prophet-For-All-Humanity.pdf",
+    "Spirit of Islam": "Spirit-of-Islam.pdf",
+    "Discovering Islam": "Discovering-Islam.pdf",
 }
 
 def format_response(text):
@@ -187,56 +202,20 @@ async function startVoice() {
         // FIXED: Improved participant identification
         room.on('transcriptionReceived', function(segs) {
             segs.forEach(function(s) {
-                // Extract participant identity - handle multiple formats
-                var participant = s.participant;
-                var pid = null;
-                
-                // Try different ways to get identity
-                if (typeof participant === 'string') {
-                    pid = participant;
-                } else if (participant && participant.identity) {
-                    pid = participant.identity;
-                } else if (participant && participant.sid) {
-                    // Check if it matches local participant
-                    if (room.localParticipant && participant.sid === room.localParticipant.sid) {
-                        pid = room.localParticipant.identity;
-                    }
-                }
-                
-                // Determine if this is from user (local participant) or bot (agent)
-                // User identity starts with 'user_' based on token generation
-                var isUser = false;
-                if (pid) {
-                    // Method 1: Check if starts with 'user_'
-                    isUser = pid.startsWith('user_');
-                    // Method 2: Check if matches local participant identity
-                    if (!isUser && localIdentity) {
-                        isUser = (pid === localIdentity);
-                    }
-                    // Method 3: Check if it's NOT an agent/bot
-                    if (!isUser && (pid.includes('agent') || pid.includes('bot'))) {
-                        isUser = false;
-                    }
-                } else {
-                    // If we can't determine, default to bot (agent messages often have null participant)
-                    isUser = false;
-                }
-                
-                console.log('🔍 Transcription DEBUG:', {
-                    text: s.text,
-                    participant: pid,
-                    localIdentity: localIdentity,
-                    isUser: isUser,
-                    final: s.final
-                });
-                
+                // Get participant identity
+                var pid = s.participant?.identity || s.participant || null;
+
+                // Simple rule: if it matches our local identity, it's user. Otherwise bot.
+                var myId = room.localParticipant?.identity || '';
+                var isUser = pid && (pid === myId || pid.startsWith('user_'));
+
+                console.log('🔍 MSG:', s.text, 'from:', pid, 'me:', myId, 'isUser:', isUser);
+
                 if (isUser) {
-                    // USER MESSAGE - Right aligned
                     if (!ub) ub = 'u' + Date.now();
                     addMsg(s.text, 'user', ub);
                     if (s.final) { ub = null; loading(true); }
                 } else {
-                    // BOT MESSAGE - Left aligned
                     loading(false);
                     if (!bb) bb = 'b' + Date.now();
                     addMsg(s.text, 'bot', bb);
