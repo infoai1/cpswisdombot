@@ -111,20 +111,20 @@ async def search_knowledge(context: RunContext, question: str):
     # Query with caching
     result = await query_lightrag_cached(question, mode="naive")
     
-    # Extract and format response
+    # Extract and format response - SHORTER for faster TTS
     response_text = result.get("response", "")
     if response_text:
-        # Clean up response - remove markdown headers, bullets, short lines
+        # Clean up - remove markdown, keep only meaningful sentences
         lines = [
-            l.strip() 
-            for l in response_text.split('\n') 
-            if l.strip() 
-            and not l.startswith('#') 
-            and not l.startswith('-') 
-            and len(l.strip()) > 20
+            l.strip()
+            for l in response_text.split('\n')
+            if l.strip()
+            and not l.startswith('#')
+            and not l.startswith('-')
+            and len(l.strip()) > 30
         ]
-        # Return first 4 meaningful lines, max 600 chars
-        formatted = ' '.join(lines[:4])[:600]
+        # Return first 2 lines only, max 300 chars for faster TTS
+        formatted = ' '.join(lines[:2])[:300]
         return formatted if formatted else "Not found."
     return "Not found."
 
@@ -135,11 +135,11 @@ async def entrypoint(ctx: JobContext):
         instructions="""CPS Wisdom Bot. Source: Maulana Wahiduddin Khan's books.
 
 RULES:
-1. When user asks a question, FIRST say "Let me check that for you" then use search_knowledge tool
-2. After getting result, answer in 2-3 sentences using "Maulana Wahiduddin Khan teaches..."
-3. Unknown topic → "This isn't covered in my library."
-4. Unclear/bizarre input → "I didn't understand that. Could you please repeat your question?"
-5. Keep responses short and direct
+1. Use search_knowledge tool for questions, then answer in 1-2 sentences MAX
+2. Say "Maulana Wahiduddin Khan teaches..." naturally
+3. Unknown → "This isn't in my library."
+4. Unclear input → "Please repeat that?"
+5. NO filler phrases. Be direct and brief.
 """,
         tools=[search_knowledge],
     )

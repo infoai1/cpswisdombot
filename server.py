@@ -84,15 +84,20 @@ BOOK_MAP = {
 }
 
 def format_response(text):
+    # Format headers and bold
     text = re.sub(r'###\s*(.+)', r'<h3>\1</h3>', text)
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
     text = re.sub(r'^-\s+(.+)$', r'<li>\1</li>', text, flags=re.MULTILINE)
     text = re.sub(r'\n\n', '</p><p>', text)
-    for book, pdf in BOOK_MAP.items():
-        encoded = urllib.parse.quote(pdf)
-        link = f'<a href="/pdfs/{encoded}" target="_blank">{book} 📥</a>'
-        text = re.sub(rf'\[?\d*\]?\s*{re.escape(book)}', link, text, flags=re.IGNORECASE)
-    return f'<p>{text}</p>'
+
+    # Remove reference section (chapter names don't match PDFs)
+    text = re.sub(r'###?\s*References.*$', '', text, flags=re.DOTALL|re.IGNORECASE)
+    text = re.sub(r'\[\d+\]\s*[^\n]+', '', text)  # Remove [1] Chapter Name lines
+
+    # Add source attribution
+    source = '<p style="margin-top:15px;color:#888;font-size:0.9em;">📚 Source: Maulana Wahiduddin Khan\'s books | <a href="/voice/books" target="_blank">Browse Library</a></p>'
+
+    return f'<p>{text.strip()}</p>{source}'
 
 @app.get("/voice/")
 async def get_page():
@@ -301,6 +306,35 @@ async def get_token():
     """Generate LiveKit access token with user_ prefix for easy identification"""
     t = api.AccessToken(API_KEY, API_SECRET).with_identity("user_" + uuid.uuid4().hex[:6]).with_grants(api.VideoGrants(room_join=True, room="voice-room"))
     return {"token": t.to_jwt()}
+
+@app.get("/voice/books")
+async def list_books():
+    """List available PDF books"""
+    import glob
+    pdf_dir = "/root/lightrag/ragdata"
+    try:
+        pdfs = glob.glob(f"{pdf_dir}/*.pdf")
+        books = sorted([os.path.basename(p).replace('.pdf', '') for p in pdfs if not any(c in os.path.basename(p) for c in ['_', '('])])[:50]
+        html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Book Library</title>
+        <style>body{background:#000;color:#fff;font-family:system-ui;padding:20px;max-width:600px;margin:0 auto}h1{font-size:1.5rem;margin-bottom:20px}
+        a{color:#4a90d9;display:block;padding:10px 0;border-bottom:1px solid #333;text-decoration:none}a:hover{color:#fff}</style></head>
+        <body><h1>📚 Maulana Wahiduddin Khan's Books</h1>"""
+        for book in books:
+            encoded = urllib.parse.quote(book + '.pdf')
+            html += f'<a href="/voice/pdf/{encoded}" target="_blank">{book} 📥</a>'
+        html += "</body></html>"
+        return HTMLResponse(html)
+    except Exception:
+        return HTMLResponse("<h1>Library unavailable</h1>")
+
+@app.get("/voice/pdf/{filename}")
+async def serve_pdf(filename: str):
+    """Serve PDF file"""
+    from fastapi.responses import FileResponse
+    filepath = f"/root/lightrag/ragdata/{filename}"
+    if os.path.exists(filepath):
+        return FileResponse(filepath, media_type="application/pdf", filename=filename)
+    return {"error": "File not found"}
 
 if __name__ == "__main__":
     import uvicorn
