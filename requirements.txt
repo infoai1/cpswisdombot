@@ -6,6 +6,7 @@ livekit-api
 livekit-plugins-openai
 livekit-plugins-silero
 livekit-plugins-groq
+livekit-plugins-deepgram
 
 # FastAPI for frontend server
 fastapi

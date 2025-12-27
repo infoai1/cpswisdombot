@@ -1,8 +1,14 @@
 """
-CPS Wisdom Bot - Optimized Voice Agent
-- Groq LLM (llama-3.3-70b) for 10x faster responses
+CPS Wisdom Bot - Ultra-Fast Voice Agent
+Pipeline: Deepgram STT (300ms) → Groq LLM (500ms) → Deepgram TTS (200ms)
+Expected total latency: ~1-1.5 seconds
+
+Optimizations:
+- Deepgram Nova-2 STT (streaming, 300ms vs OpenAI 2-3s)
+- Groq Llama 3.3 70B LLM (500ms vs Gemini 3-4s)
+- Deepgram Aura TTS (200ms vs OpenAI 2-3s)
 - Redis caching for repeated queries
-- Optimized VAD (0.5s) for faster speech detection
+- Fast VAD (0.5s silence detection)
 """
 
 import asyncio
@@ -12,7 +18,7 @@ import time
 from dotenv import load_dotenv
 from livekit.agents import JobContext, WorkerOptions, cli, Agent, function_tool, RunContext
 from livekit.agents.voice import AgentSession
-from livekit.plugins import openai, silero, groq
+from livekit.plugins import openai, silero, groq, deepgram
 import httpx
 from typing import Optional
 
@@ -158,12 +164,13 @@ RULES:
         tools=[search_knowledge],
     )
     
-    # OPTIMIZED: Groq LLM (10x faster than Gemini) + faster VAD
+    # ULTRA-FAST PIPELINE: Deepgram STT (300ms) + Groq LLM (500ms) + Deepgram TTS (200ms)
+    # Total expected latency: ~1-1.5 seconds (vs 15+ seconds before)
     session = AgentSession(
-        vad=silero.VAD.load(min_silence_duration=0.5),  # Faster speech detection
-        stt=openai.STT(),  # OpenAI Whisper for accuracy
-        llm=groq.LLM(model="llama-3.3-70b-versatile"),  # Groq: ~500ms vs Gemini ~3s
-        tts=openai.TTS(voice="nova"),  # Keep OpenAI TTS for quality
+        vad=silero.VAD.load(min_silence_duration=0.5),  # Fast speech detection
+        stt=deepgram.STT(model="nova-2"),  # Deepgram Nova-2: ~300ms streaming
+        llm=groq.LLM(model="llama-3.3-70b-versatile"),  # Groq: ~500ms
+        tts=deepgram.TTS(model="aura-asteria-en"),  # Deepgram Aura: ~200ms
     )
     
     # Start the session
