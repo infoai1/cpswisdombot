@@ -153,15 +153,16 @@ async def get_page():
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .loading { background: linear-gradient(90deg, #2c2c2e, #3a3a4a, #2c2c2e); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        .dots { display: flex; gap: 4px; padding: 8px 0; }
-        .dots span { width: 8px; height: 8px; border-radius: 50%; animation: rainbow 2s infinite; }
+        .dots { display: flex; gap: 6px; padding: 8px 0; align-items: center; }
+        .dots span { width: 8px; height: 8px; border-radius: 50%; background: #888; animation: bounce 1.4s ease-in-out infinite; }
         .dots span:nth-child(1) { animation-delay: 0s; } .dots span:nth-child(2) { animation-delay: .2s; } .dots span:nth-child(3) { animation-delay: .4s; }
-        @keyframes rainbow { 0%, 100% { background: #ff6b6b; transform: scale(1); } 50% { background: #ffe66d; transform: scale(1); } }
+        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); background: #666; } 40% { transform: translateY(-10px); background: #4a90d9; } }
         .bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: #1c1c1e; border-radius: 30px; display: flex; padding: 8px 8px 8px 20px; transition: box-shadow .3s; z-index: 100; }
         input { flex: 1; background: none; border: none; color: #fff; font-size: 1rem; outline: none; }
         .btns { display: flex; gap: 8px; }
         button { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #sendBtn { background: none; } #voiceBtn { background: #00c853; } #muteBtn { background: #333; display: none; } #endBtn { background: #8b0000; display: none; }
+        #sendBtn { background: none; } #voiceBtn { background: #00c853; } #muteBtn { background: #333; display: none; }
+        #endBtn { background: #D22B2B; display: none; width: auto; padding: 0 16px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 500; }
         .calling #sendBtn, .calling #voiceBtn { display: none; } .calling #muteBtn, .calling #endBtn { display: flex; }
         .calling input { opacity: .3; pointer-events: none; } .calling .bar { animation: glow 2s infinite; }
         .muted { background: #fff !important; }
@@ -180,7 +181,7 @@ async def get_page():
             <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#007aff" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
             <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#fff" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
             <button id="muteBtn" onclick="toggleMute()"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.92V21h2v-3.08A7 7 0 0019 11h-2z"/><line x1="4" y1="4" x2="20" y2="20" stroke="#fff" stroke-width="2"/></svg></button>
-            <button id="endBtn" onclick="endVoice()"><svg width="24" height="24" fill="#fff" viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39.23.74.56.9.98.47 1.87 1.11 2.66 1.85.18.17.44.2.7.03L12 13.08l.68 2.52c.26.17.52.14.7-.03.79-.74 1.68-1.38 2.66-1.85.33-.16.56-.51.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg></button>
+            <button id="endBtn" onclick="endVoice()">End</button>
         </div>
     </div>
 <script>
