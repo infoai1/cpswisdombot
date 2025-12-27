@@ -156,9 +156,13 @@ async def get_page():
         input { flex: 1; background: none; border: none; color: #fff; font-size: 1rem; outline: none; }
         .btns { display: flex; gap: 8px; }
         button { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #sendBtn { background: none; } #voiceBtn { background: #00c853; } #muteBtn { background: #444; display: none; } #endBtn { background: #ff3b30; display: none; }
+        #sendBtn { background: none; } #voiceBtn { background: #00c853; } #muteBtn { background: #333; display: none; } #endBtn { background: #8b0000; display: none; }
         .calling #sendBtn, .calling #voiceBtn { display: none; } .calling #muteBtn, .calling #endBtn { display: flex; }
         .calling input { opacity: .3; pointer-events: none; } .calling .bar { animation: glow 2s infinite; }
+        .muted { background: #fff !important; }
+        .muted svg { fill: #000 !important; }
+        .typing #voiceBtn { display: none; }
+        .typing #sendBtn { display: flex; }
         @keyframes glow { 0% { box-shadow: 0 0 15px #ff6b6b; } 50% { box-shadow: 0 0 15px #a855f7; } 100% { box-shadow: 0 0 15px #ff6b6b; } }
     </style>
 </head>
@@ -166,7 +170,7 @@ async def get_page():
     <div id="hero"><h1>Seek, Reflect, Discover</h1><p>For those who reason</p></div>
     <div id="chat"></div>
     <div class="bar">
-        <input id="inp" placeholder="Ask about life, peace, Spirituality..." onkeydown="if(event.key==='Enter')sendText()">
+        <input id="inp" placeholder="Ask about life, peace, Spirituality..." onkeydown="if(event.key==='Enter')sendText()" oninput="toggleTyping()" onblur="toggleTyping()">
         <div class="btns">
             <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#007aff" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
             <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#fff" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
@@ -228,8 +232,9 @@ async function startVoice() {
         await room.localParticipant.setMicrophoneEnabled(true);
     } catch (e) { console.error('❌ Connection error:', e); endVoice(); }
 }
-function toggleMute() { if (!room) return; muted = !muted; room.localParticipant.setMicrophoneEnabled(!muted); document.getElementById('muteBtn').style.background = muted ? '#fff' : '#444'; document.getElementById('muteBtn').querySelector('svg').style.fill = muted ? '#000' : '#fff'; }
-function endVoice() { if (room) room.disconnect(); room = null; ub = null; bb = null; muted = false; localIdentity = null; document.body.classList.remove('calling'); document.getElementById('muteBtn').style.background = '#444'; loading(false); }
+function toggleMute() { if (!room) return; muted = !muted; room.localParticipant.setMicrophoneEnabled(!muted); var btn = document.getElementById('muteBtn'); if(muted) btn.classList.add('muted'); else btn.classList.remove('muted'); }
+function toggleTyping() { var inp = document.getElementById('inp'); if(inp.value.trim()) document.body.classList.add('typing'); else document.body.classList.remove('typing'); }
+function endVoice() { if (room) room.disconnect(); room = null; ub = null; bb = null; muted = false; localIdentity = null; document.body.classList.remove('calling'); document.getElementById('muteBtn').classList.remove('muted'); loading(false); }
 // Auto-reconnect when phone wakes from sleep
 document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && document.body.classList.contains('calling') && (!room || room.state !== 'connected')) {
