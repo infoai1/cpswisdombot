@@ -90,14 +90,18 @@ def format_response(text):
     text = re.sub(r'^-\s+(.+)$', r'<li>\1</li>', text, flags=re.MULTILINE)
     text = re.sub(r'\n\n', '</p><p>', text)
 
-    # Remove reference section (chapter names don't match PDFs)
+    # Remove reference section and empty bullet points
     text = re.sub(r'###?\s*References.*$', '', text, flags=re.DOTALL|re.IGNORECASE)
-    text = re.sub(r'\[\d+\]\s*[^\n]+', '', text)  # Remove [1] Chapter Name lines
+    text = re.sub(r'\[\d+\]\s*[^\n]*', '', text)  # Remove [1] Chapter Name lines
+    text = re.sub(r'<li>\s*</li>', '', text)  # Remove empty list items
+    text = re.sub(r'^\s*[\*\-•]\s*$', '', text, flags=re.MULTILINE)  # Remove lone bullets
+    text = re.sub(r'\n\s*\n', '\n', text)  # Remove extra blank lines
+    text = text.strip()
 
-    # Add source attribution
+    # Add source attribution (clean, no bullets)
     source = '<p style="margin-top:15px;color:#888;font-size:0.9em;">📚 Source: Maulana Wahiduddin Khan\'s books | <a href="/voice/books" target="_blank">Browse Library</a></p>'
 
-    return f'<p>{text.strip()}</p>{source}'
+    return f'<p>{text}</p>{source}'
 
 @app.get("/voice/")
 async def get_page():
@@ -161,7 +165,7 @@ async def get_page():
         input { flex: 1; background: none; border: none; color: #fff; font-size: 1rem; outline: none; }
         .btns { display: flex; gap: 8px; }
         button { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #sendBtn { background: none; } #voiceBtn { background: #00c853; } #muteBtn { background: #333; display: none; }
+        #sendBtn { background: #fff; } #voiceBtn { background: #fff; } #muteBtn { background: #333; display: none; }
         #endBtn { background: #D22B2B; display: none; width: auto; padding: 0 16px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 500; }
         .calling #sendBtn, .calling #voiceBtn { display: none; } .calling #muteBtn, .calling #endBtn { display: flex; }
         .calling input { opacity: .3; pointer-events: none; } .calling .bar { animation: glow 2s infinite; }
@@ -178,8 +182,8 @@ async def get_page():
     <div class="bar">
         <input id="inp" placeholder="Ask about life, peace, Spirituality..." onkeydown="if(event.key==='Enter')sendText()" oninput="toggleTyping()" onblur="toggleTyping()">
         <div class="btns">
-            <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#007aff" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
-            <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#fff" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
+            <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#000" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
+            <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#000" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
             <button id="muteBtn" onclick="toggleMute()"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.92V21h2v-3.08A7 7 0 0019 11h-2z"/><line x1="4" y1="4" x2="20" y2="20" stroke="#fff" stroke-width="2"/></svg></button>
             <button id="endBtn" onclick="endVoice()">End</button>
         </div>
