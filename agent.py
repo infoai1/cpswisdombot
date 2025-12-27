@@ -1,8 +1,8 @@
 """
 CPS Wisdom Bot - Optimized Voice Agent
-- Redis caching for faster repeated queries
-- Optimized VAD (0.5s instead of 0.8s)
-- Pre-call feedback for better UX
+- Groq LLM (llama-3.3-70b) for 10x faster responses
+- Redis caching for repeated queries
+- Optimized VAD (0.5s) for faster speech detection
 """
 
 import asyncio
@@ -12,7 +12,7 @@ import time
 from dotenv import load_dotenv
 from livekit.agents import JobContext, WorkerOptions, cli, Agent, function_tool, RunContext
 from livekit.agents.voice import AgentSession
-from livekit.plugins import openai, silero, google
+from livekit.plugins import openai, silero, groq
 import httpx
 from typing import Optional
 
@@ -158,12 +158,12 @@ RULES:
         tools=[search_knowledge],
     )
     
-    # OPTIMIZED: Faster VAD (0.5s instead of 0.8s) for quicker response
+    # OPTIMIZED: Groq LLM (10x faster than Gemini) + faster VAD
     session = AgentSession(
-        vad=silero.VAD.load(min_silence_duration=0.5),  # Reduced from 0.8s (37.5% faster)
-        stt=openai.STT(),
-        llm=google.LLM(model="gemini-3-flash-preview"),
-        tts=openai.TTS(voice="nova"),
+        vad=silero.VAD.load(min_silence_duration=0.5),  # Faster speech detection
+        stt=openai.STT(),  # OpenAI Whisper for accuracy
+        llm=groq.LLM(model="llama-3.3-70b-versatile"),  # Groq: ~500ms vs Gemini ~3s
+        tts=openai.TTS(voice="nova"),  # Keep OpenAI TTS for quality
     )
     
     # Start the session

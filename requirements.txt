@@ -5,7 +5,7 @@ livekit-agents
 livekit-api
 livekit-plugins-openai
 livekit-plugins-silero
-livekit-plugins-google
+livekit-plugins-groq
 
 # FastAPI for frontend server
 fastapi
