@@ -218,8 +218,8 @@ async function startVoice() {
                         isUser = false;
                     }
                 } else {
-                    // If we can't determine, default to user (safer for alignment)
-                    isUser = true;
+                    // If we can't determine, default to bot (agent messages often have null participant)
+                    isUser = false;
                 }
                 
                 console.log('🔍 Transcription DEBUG:', {

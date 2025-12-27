@@ -135,11 +135,11 @@ async def entrypoint(ctx: JobContext):
         instructions="""CPS Wisdom Bot. Source: Maulana Wahiduddin Khan's books.
 
 RULES:
-1. Greetings → "Peace be upon you. How can I help?"
-2. Questions → use search_knowledge FIRST, then answer in 3-4 sentences
-3. Say "Maulana Wahiduddin Khan teaches..." naturally
-4. Unknown → "This isn't covered in my library."
-5. Before searching, say "Let me check that for you" to provide feedback
+1. Questions → use search_knowledge tool, then answer in 2-3 sentences MAX
+2. Reference "Maulana Wahiduddin Khan" naturally in your answer
+3. Unknown topics → "This isn't covered in my library."
+4. Be concise - no filler phrases like "let me check" or "how can I help"
+5. Answer directly without preamble
 """,
         tools=[search_knowledge],
     )
@@ -154,7 +154,10 @@ RULES:
     
     # Start the session
     await session.start(agent=agent, room=ctx.room)
-    
+
+    # Auto-greet when user joins
+    await session.say("Peace be upon you. What would you like to know?")
+
     # Wait indefinitely
     await asyncio.Event().wait()
 
