@@ -218,8 +218,8 @@ async function startVoice() {
                         isUser = false;
                     }
                 } else {
-                    // If we can't determine, default to user (safer for alignment)
-                    isUser = true;
+                    // If we can't determine, default to bot (agent messages often have null participant)
+                    isUser = false;
                 }
                 
                 console.log('🔍 Transcription DEBUG:', {
@@ -251,6 +251,13 @@ async function startVoice() {
 }
 function toggleMute() { if (!room) return; muted = !muted; room.localParticipant.setMicrophoneEnabled(!muted); document.getElementById('muteBtn').style.background = muted ? '#fff' : '#444'; document.getElementById('muteBtn').querySelector('svg').style.fill = muted ? '#000' : '#fff'; }
 function endVoice() { if (room) room.disconnect(); room = null; ub = null; bb = null; muted = false; localIdentity = null; document.body.classList.remove('calling'); document.getElementById('muteBtn').style.background = '#444'; loading(false); }
+// Auto-reconnect when phone wakes from sleep
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && document.body.classList.contains('calling') && (!room || room.state !== 'connected')) {
+        console.log('📱 Phone woke up - reconnecting...');
+        startVoice();
+    }
+});
 async function sendText() {
     var i = document.getElementById('inp'), q = i.value.trim();
     if (!q) return; if (room) endVoice(); show(); i.value = ''; addMsg(q, 'user'); loading(true);

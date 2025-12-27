@@ -154,7 +154,10 @@ RULES:
     
     # Start the session
     await session.start(agent=agent, room=ctx.room)
-    
+
+    # Auto-greet when user joins
+    await session.say("Peace be upon you.")
+
     # Wait indefinitely
     await asyncio.Event().wait()
 
