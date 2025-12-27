@@ -78,7 +78,7 @@ async def query_groq(question: str, context: str) -> tuple[str, float]:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "llama-3.1-70b-versatile",
+                    "model": "llama-3.3-70b-versatile",
                     "messages": [
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"}
@@ -138,7 +138,7 @@ def print_comparison(question: str, gemini_resp: str, gemini_time: float, groq_r
     print("-" * 40)
     print(gemini_resp[:500])
 
-    print(f"\n🟢 GROQ LLAMA 3.1 70B ({groq_time:.0f}ms):")
+    print(f"\n🟢 GROQ LLAMA 3.3 70B ({groq_time:.0f}ms):")
     print("-" * 40)
     print(groq_resp[:500])
 
