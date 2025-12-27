@@ -1,3 +1,238 @@
+# 📋 Copy-Paste Instructions for Non-Coders
+
+## Step 1: Stop Current Services
+
+Copy and paste these commands one by one:
+
+```bash
+cd /root/my_agent
+source venv/bin/activate
+pkill -f "python.*agent"
+pkill -f "python.*server"
+sleep 3
+```
+
+---
+
+## Step 2: Install Redis (if not already installed)
+
+```bash
+cd /root/my_agent
+source venv/bin/activate
+pip install redis
+```
+
+Wait for it to finish. You should see "Successfully installed redis".
+
+---
+
+## Step 3: Backup Your Old Files (Safety First)
+
+```bash
+cd /root/my_agent
+cp agent.py agent.py.backup
+cp server.py server.py.backup
+```
+
+---
+
+## Step 4: Update agent.py File
+
+Open the file for editing:
+
+```bash
+nano /root/my_agent/agent.py
+```
+
+**Delete everything** in the file (Ctrl+K to delete lines, or select all and delete).
+
+Then **copy and paste** this entire code:
+
+```python
+"""
+CPS Wisdom Bot - Optimized Voice Agent
+- Redis caching for faster repeated queries
+- Optimized VAD (0.5s instead of 0.8s)
+- Pre-call feedback for better UX
+"""
+
+import asyncio
+import hashlib
+import json
+from dotenv import load_dotenv
+from livekit.agents import JobContext, WorkerOptions, cli, Agent, function_tool, RunContext
+from livekit.agents.voice import AgentSession
+from livekit.plugins import openai, silero, google
+import httpx
+from typing import Optional
+
+# Optional Redis import - agent works without it (just no caching)
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    print("⚠️ Redis not installed. Caching disabled. Install with: pip install redis")
+
+load_dotenv()
+
+# Redis connection for caching
+redis_client = None
+
+def get_redis_client():
+    """Get or create Redis client for caching"""
+    global redis_client
+    if not REDIS_AVAILABLE:
+        return None
+    
+    if redis_client is None:
+        try:
+            redis_client = redis.Redis(
+                host='127.0.0.1',
+                port=6380,  # LiveKit's Redis
+                db=0,
+                decode_responses=True,
+                socket_connect_timeout=2
+            )
+            redis_client.ping()
+            print("✅ Redis connected for caching")
+        except Exception as e:
+            print(f"⚠️ Redis connection failed: {e}. Caching disabled.")
+            redis_client = None
+    return redis_client
+
+def get_cache_key(query: str) -> str:
+    """Generate cache key from query"""
+    return f"lightrag:query:{hashlib.md5(query.lower().strip().encode()).hexdigest()}"
+
+async def query_lightrag_cached(query: str, mode: str = "naive") -> dict:
+    """
+    Query LightRAG with Redis caching
+    Returns cached result if available, otherwise queries LightRAG
+    """
+    cache_key = get_cache_key(query)
+    redis_cli = get_redis_client()
+    
+    # Try to get from cache
+    if redis_cli:
+        try:
+            cached = redis_cli.get(cache_key)
+            if cached:
+                print(f"✅ Cache HIT: {query[:50]}...")
+                return json.loads(cached)
+        except Exception as e:
+            print(f"⚠️ Cache read error: {e}")
+    
+    # Query LightRAG
+    print(f"🔍 Cache MISS - querying LightRAG: {query[:50]}...")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                "http://127.0.0.1:9621/query",
+                json={"query": query, "mode": mode}
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                
+                # Cache the result (TTL: 1 hour)
+                if redis_cli:
+                    try:
+                        redis_cli.setex(
+                            cache_key,
+                            3600,  # 1 hour TTL
+                            json.dumps(result)
+                        )
+                        print(f"💾 Cached result for: {query[:50]}...")
+                    except Exception as e:
+                        print(f"⚠️ Cache write error: {e}")
+                
+                return result
+            else:
+                return {"response": "Error querying knowledge base."}
+    except Exception as e:
+        print(f"❌ LightRAG query error: {e}")
+        return {"response": "Search unavailable."}
+
+@function_tool
+async def search_knowledge(context: RunContext, question: str):
+    """
+    Search Islamic wisdom from Maulana Wahiduddin Khan's books.
+    Use this tool to find information about peace, spirituality, and Islamic teachings.
+    """
+    # Query with caching
+    result = await query_lightrag_cached(question, mode="naive")
+    
+    # Extract and format response
+    response_text = result.get("response", "")
+    if response_text:
+        # Clean up response - remove markdown headers, bullets, short lines
+        lines = [
+            l.strip() 
+            for l in response_text.split('\n') 
+            if l.strip() 
+            and not l.startswith('#') 
+            and not l.startswith('-') 
+            and len(l.strip()) > 20
+        ]
+        # Return first 4 meaningful lines, max 600 chars
+        formatted = ' '.join(lines[:4])[:600]
+        return formatted if formatted else "Not found."
+    return "Not found."
+
+async def entrypoint(ctx: JobContext):
+    await ctx.connect()
+    
+    agent = Agent(
+        instructions="""CPS Wisdom Bot. Source: Maulana Wahiduddin Khan's books.
+
+RULES:
+1. Greetings → "Peace be upon you. How can I help?"
+2. Questions → use search_knowledge FIRST, then answer in 3-4 sentences
+3. Say "Maulana Wahiduddin Khan teaches..." naturally
+4. Unknown → "This isn't covered in my library."
+5. Before searching, say "Let me check that for you" to provide feedback
+""",
+        tools=[search_knowledge],
+    )
+    
+    # OPTIMIZED: Faster VAD (0.5s instead of 0.8s) for quicker response
+    session = AgentSession(
+        vad=silero.VAD.load(min_silence_duration=0.5),  # Reduced from 0.8s (37.5% faster)
+        stt=openai.STT(),
+        llm=google.LLM(model="gemini-3-flash-preview"),
+        tts=openai.TTS(voice="nova"),
+    )
+    
+    # Start the session
+    await session.start(agent=agent, room=ctx.room)
+    
+    # Wait indefinitely
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+**Save the file:**
+- Press `Ctrl + X`
+- Press `Y` (to confirm)
+- Press `Enter` (to save)
+
+---
+
+## Step 5: Update server.py File
+
+Open the file for editing:
+
+```bash
+nano /root/my_agent/server.py
+```
+
+**Delete everything** in the file.
+
+Then **copy and paste** this entire code:
+
+```python
 """
 CPS Wisdom Bot - FastAPI Server
 FIXED: Chat alignment issue - properly identifies user vs bot messages
@@ -106,7 +341,7 @@ async def get_page():
 
         .msg { 
             padding: 12px 16px; border-radius: 18px; 
-            max-width: 75%; /* KEY: Allows movement */
+            max-width: 75%; 
             line-height: 1.5; position: relative; word-wrap: break-word; 
             animation: fadeIn .2s;
         }
@@ -114,7 +349,7 @@ async def get_page():
         /* USER: FORCE RIGHT using Auto Margin */
         .user { 
             background: #007aff; color: white;
-            margin-left: auto; /* Pushes to Right */
+            margin-left: auto; 
             margin-right: 0;
             border-bottom-right-radius: 4px; text-align: left; 
         }
@@ -122,7 +357,7 @@ async def get_page():
         /* BOT: FORCE LEFT using Auto Margin */
         .bot { 
             background: #2c2c2e; color: white;
-            margin-right: auto; /* Pushes to Left */
+            margin-right: auto; 
             margin-left: 0;
             border-bottom-left-radius: 4px; text-align: left; 
         }
@@ -314,3 +549,86 @@ async def get_token():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+**Save the file:**
+- Press `Ctrl + X`
+- Press `Y` (to confirm)
+- Press `Enter` (to save)
+
+---
+
+## Step 6: Start the Services
+
+Copy and paste these commands:
+
+```bash
+cd /root/my_agent
+source venv/bin/activate
+python server.py > server.log 2>&1 &
+python agent.py dev > agent.log 2>&1 &
+```
+
+---
+
+## Step 7: Check if Everything is Working
+
+```bash
+ps aux | grep -E "agent|server" | grep -v grep
+```
+
+You should see 2 processes running (agent.py and server.py).
+
+---
+
+## Step 8: Check Logs for Errors
+
+```bash
+tail -30 agent.log
+```
+
+Look for:
+- ✅ "registered worker" = Good!
+- ✅ "HTTP server listening" = Good!
+- ❌ Any "ERROR" = Problem (let me know)
+
+---
+
+## Step 9: Test in Browser
+
+1. Open: `https://livekit.spiritualmessage.org/voice/`
+2. Click the green voice button
+3. Speak something
+4. **Check**: Your message should appear on the **RIGHT** (blue bubble)
+5. Bot response should appear on the **LEFT** (gray bubble)
+
+---
+
+## ✅ Done!
+
+If everything works:
+- ✅ Your messages = RIGHT side (blue)
+- ✅ Bot messages = LEFT side (gray)
+- ✅ Repeated questions = Instant (cached)
+
+---
+
+## 🆘 If Something Goes Wrong
+
+**To restore old files:**
+```bash
+cd /root/my_agent
+cp agent.py.backup agent.py
+cp server.py.backup server.py
+```
+
+**To see errors:**
+```bash
+tail -50 agent.log
+tail -50 server.log
+```
+
+---
+
+*Follow these steps exactly, one by one. Good luck! 🚀*
+

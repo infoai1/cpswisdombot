@@ -1,0 +1,22 @@
+# CPS Wisdom Bot - Python Dependencies
+
+# LiveKit Agents
+livekit-agents
+livekit-api
+livekit-plugins-openai
+livekit-plugins-silero
+livekit-plugins-google
+
+# FastAPI for frontend server
+fastapi
+uvicorn[standard]
+
+# Redis for caching
+redis
+
+# HTTP client for LightRAG queries
+httpx
+
+# Environment variables
+python-dotenv
+
