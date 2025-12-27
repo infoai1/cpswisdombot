@@ -299,4 +299,59 @@ echo "Services started. Check: ps aux | grep python"
 
 ---
 
-*Document generated: December 26, 2025* so give me solution how can make my bot faster and while i use my voice agent it recognises user input as bot input hence thealignment is left not right
+*Document generated: December 26, 2025*
+
+---
+
+## 13. AUTO-DEPLOY SETUP (GitHub Actions)
+
+### Step 1: Generate SSH Key on Your VPS
+
+SSH into your Hetzner server and run:
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+cat ~/.ssh/github_deploy
+```
+
+**Copy the private key output** (starts with `-----BEGIN OPENSSH PRIVATE KEY-----`)
+
+### Step 2: Add GitHub Secrets
+
+1. Go to your repo → **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret** and add:
+
+| Secret Name | Value |
+|-------------|-------|
+| `HOST` | Your Hetzner IP (e.g., `123.456.789.0`) |
+| `USERNAME` | `root` |
+| `SSH_PRIVATE_KEY` | Paste the entire private key from Step 1 |
+
+### Step 3: Test Deploy
+
+Push to `main` branch → GitHub Actions auto-deploys.
+
+Or trigger manually: **Actions** → **Deploy to Hetzner VPS** → **Run workflow**
+
+### Manual Deploy (SSH)
+
+```bash
+ssh root@YOUR_IP "bash -s" < deploy.sh
+```
+
+---
+
+## Troubleshooting Deploy
+
+```bash
+# Check agent running
+ssh root@YOUR_IP "pgrep -f agent.py"
+
+# View logs
+ssh root@YOUR_IP "tail -50 /root/my_agent/agent.log"
+
+# Manual restart
+ssh root@YOUR_IP "cd /root/my_agent && source venv/bin/activate && pkill -f agent.py; nohup python agent.py dev > agent.log 2>&1 &"
+```
