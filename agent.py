@@ -65,7 +65,7 @@ async def query_lightrag_cached(query: str, mode: str = "naive") -> dict:
     # Try to get from cache
     if redis_cli:
         try:
-            cached = redis_cli.get(cache_key)
+            cached = await asyncio.to_thread(redis_cli.get, cache_key)
             if cached:
                 print(f"✅ Cache HIT: {query[:50]}...")
                 return json.loads(cached)
@@ -86,7 +86,8 @@ async def query_lightrag_cached(query: str, mode: str = "naive") -> dict:
                 # Cache the result (TTL: 1 hour)
                 if redis_cli:
                     try:
-                        redis_cli.setex(
+                        await asyncio.to_thread(
+                            redis_cli.setex,
                             cache_key,
                             3600,  # 1 hour TTL
                             json.dumps(result)
