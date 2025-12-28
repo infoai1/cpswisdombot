@@ -140,13 +140,20 @@ async def get_page():
         .bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: #1c1c1e; border-radius: 30px; display: flex; align-items: flex-end; padding: 8px 8px 8px 20px; transition: box-shadow .3s; z-index: 100; }
         #inp { flex: 1; background: none; border: none; color: #fff; font-size: 1rem; outline: none; resize: none; font-family: inherit; min-height: 44px; max-height: 132px; overflow-y: auto; line-height: 1.4; padding: 10px 0; }
         #inp::-webkit-scrollbar { width: 4px; } #inp::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
-        .btns { display: flex; gap: 8px; }
-        button { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity .2s, transform .2s; }
-        #sendBtn { background: none; opacity: 0; transform: scale(0.8); pointer-events: none; }
+        .btns { display: flex; gap: 8px; align-items: center; }
+        button { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity .2s, transform .2s; }
+
+        /* Send/Voice button container - stacks buttons in same position */
+        .btn-stack { position: relative; width: 44px; height: 44px; }
+        #sendBtn, #voiceBtn { position: absolute; top: 0; left: 0; width: 44px; height: 44px; border-radius: 50%; }
+        #sendBtn { background: none; opacity: 0; transform: scale(0.8); pointer-events: none; z-index: 1; }
         #sendBtn.show { opacity: 1; transform: scale(1); pointer-events: auto; }
-        #voiceBtn { background: #00c853; }
+        #voiceBtn { background: #00c853; opacity: 1; transform: scale(1); z-index: 0; }
         #voiceBtn.hide { opacity: 0; transform: scale(0.8); pointer-events: none; }
-        #muteBtn { background: #444; display: none; } #endBtn { background: #ff3b30; display: none; }
+
+        /* Call control buttons */
+        #muteBtn { width: 44px; height: 44px; border-radius: 50%; background: #444; display: none; }
+        #endBtn { padding: 8px 16px; height: 36px; border-radius: 18px; background: #444; color: #fff; font-size: 0.85rem; font-weight: 500; display: none; white-space: nowrap; }
         .calling #sendBtn, .calling #voiceBtn { display: none; } .calling #muteBtn, .calling #endBtn { display: flex; }
         .calling textarea { opacity: .3; pointer-events: none; } .calling .bar { animation: glow 2s infinite; }
         @keyframes glow { 0% { box-shadow: 0 0 15px #ff6b6b; } 50% { box-shadow: 0 0 15px #a855f7; } 100% { box-shadow: 0 0 15px #ff6b6b; } }
@@ -162,10 +169,12 @@ async def get_page():
     <div class="bar">
         <textarea id="inp" placeholder="Ask about life, peace, Spirituality..." rows="1" oninput="handleInput()" onkeydown="handleKeyDown(event)" onfocus="scrollInputIntoView()"></textarea>
         <div class="btns">
-            <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#007aff" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
-            <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#fff" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
+            <div class="btn-stack">
+                <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#007aff" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
+                <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#fff" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
+            </div>
             <button id="muteBtn" onclick="toggleMute()"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.92V21h2v-3.08A7 7 0 0019 11h-2z"/><line x1="4" y1="4" x2="20" y2="20" stroke="#fff" stroke-width="2"/></svg></button>
-            <button id="endBtn" onclick="endVoice()"><svg width="24" height="24" fill="#fff" viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39.23.74.56.9.98.47 1.87 1.11 2.66 1.85.18.17.44.2.7.03L12 13.08l.68 2.52c.26.17.52.14.7-.03.79-.74 1.68-1.38 2.66-1.85.33-.16.56-.51.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg></button>
+            <button id="endBtn" onclick="endVoice()">End</button>
         </div>
     </div>
 <script>
