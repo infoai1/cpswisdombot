@@ -137,21 +137,30 @@ async def get_page():
         .dots span { width: 8px; height: 8px; border-radius: 50%; animation: rainbow 2s infinite; }
         .dots span:nth-child(1) { animation-delay: 0s; } .dots span:nth-child(2) { animation-delay: .2s; } .dots span:nth-child(3) { animation-delay: .4s; }
         @keyframes rainbow { 0%, 100% { background: #ff6b6b; transform: scale(1); } 50% { background: #ffe66d; transform: scale(1); } }
-        .bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: #1c1c1e; border-radius: 30px; display: flex; padding: 8px 8px 8px 20px; transition: box-shadow .3s; z-index: 100; }
-        input { flex: 1; background: none; border: none; color: #fff; font-size: 1rem; outline: none; }
+        .bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: #1c1c1e; border-radius: 30px; display: flex; align-items: flex-end; padding: 8px 8px 8px 20px; transition: box-shadow .3s; z-index: 100; }
+        #inp { flex: 1; background: none; border: none; color: #fff; font-size: 1rem; outline: none; resize: none; font-family: inherit; min-height: 44px; max-height: 132px; overflow-y: auto; line-height: 1.4; padding: 10px 0; }
+        #inp::-webkit-scrollbar { width: 4px; } #inp::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
         .btns { display: flex; gap: 8px; }
-        button { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #sendBtn { background: none; } #voiceBtn { background: #00c853; } #muteBtn { background: #444; display: none; } #endBtn { background: #ff3b30; display: none; }
+        button { width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity .2s, transform .2s; }
+        #sendBtn { background: none; opacity: 0; transform: scale(0.8); pointer-events: none; }
+        #sendBtn.show { opacity: 1; transform: scale(1); pointer-events: auto; }
+        #voiceBtn { background: #00c853; }
+        #voiceBtn.hide { opacity: 0; transform: scale(0.8); pointer-events: none; }
+        #muteBtn { background: #444; display: none; } #endBtn { background: #ff3b30; display: none; }
         .calling #sendBtn, .calling #voiceBtn { display: none; } .calling #muteBtn, .calling #endBtn { display: flex; }
-        .calling input { opacity: .3; pointer-events: none; } .calling .bar { animation: glow 2s infinite; }
+        .calling textarea { opacity: .3; pointer-events: none; } .calling .bar { animation: glow 2s infinite; }
         @keyframes glow { 0% { box-shadow: 0 0 15px #ff6b6b; } 50% { box-shadow: 0 0 15px #a855f7; } 100% { box-shadow: 0 0 15px #ff6b6b; } }
+
+        /* Cursor with drop anchor effect */
+        #inp { caret-color: #007aff; }
+        @keyframes droplet { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(4px) scale(0.8); opacity: 0.3; } }
     </style>
 </head>
 <body>
     <div id="hero"><h1>Seek, Reflect, Discover</h1><p>For those who reason</p></div>
     <div id="chat"></div>
     <div class="bar">
-        <input id="inp" placeholder="Ask about life, peace, Spirituality..." onkeydown="if(event.key==='Enter')sendText()">
+        <textarea id="inp" placeholder="Ask about life, peace, Spirituality..." rows="1" oninput="handleInput()" onkeydown="handleKeyDown(event)" onfocus="scrollInputIntoView()"></textarea>
         <div class="btns">
             <button id="sendBtn" onclick="sendText()"><svg width="24" height="24" fill="#007aff" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg></button>
             <button id="voiceBtn" onclick="startVoice()"><svg width="24" height="24" stroke="#fff" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4"/></svg></button>
@@ -162,6 +171,42 @@ async def get_page():
 <script>
 var room = null, ub = null, bb = null, ld = null, muted = false, localIdentity = null;
 function show() { document.getElementById('hero').classList.add('hide'); document.getElementById('chat').classList.add('show'); }
+
+// Auto-resize textarea and toggle buttons
+function handleInput() {
+    var inp = document.getElementById('inp');
+    var sendBtn = document.getElementById('sendBtn');
+    var voiceBtn = document.getElementById('voiceBtn');
+
+    // Auto-resize
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 132) + 'px';
+
+    // Toggle buttons based on content
+    var hasText = inp.value.trim().length > 0;
+    if (hasText) {
+        sendBtn.classList.add('show');
+        voiceBtn.classList.add('hide');
+    } else {
+        sendBtn.classList.remove('show');
+        voiceBtn.classList.remove('hide');
+    }
+}
+
+// Handle Enter key (send on Enter, new line on Shift+Enter)
+function handleKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendText();
+    }
+}
+
+// Scroll input into view on mobile keyboard open
+function scrollInputIntoView() {
+    setTimeout(function() {
+        document.getElementById('inp').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+}
 function addMsg(t, c, id) {
     var el = id ? document.getElementById(id) : null;
     if (el) { el.innerHTML = t; el.classList.remove('loading'); }
@@ -253,7 +298,13 @@ function toggleMute() { if (!room) return; muted = !muted; room.localParticipant
 function endVoice() { if (room) room.disconnect(); room = null; ub = null; bb = null; muted = false; localIdentity = null; document.body.classList.remove('calling'); document.getElementById('muteBtn').style.background = '#444'; loading(false); }
 async function sendText() {
     var i = document.getElementById('inp'), q = i.value.trim();
-    if (!q) return; if (room) endVoice(); show(); i.value = ''; addMsg(q, 'user'); loading(true);
+    if (!q) return; if (room) endVoice(); show(); i.value = '';
+
+    // Reset textarea height and buttons
+    i.style.height = 'auto';
+    handleInput();
+
+    addMsg(q, 'user'); loading(true);
     try { var r = await fetch('/voice/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q }) }); var d = await r.json(); loading(false); addMsg(d.answer || 'No response.', 'bot'); } catch (e) { loading(false); addMsg('Error.', 'bot'); }
 }
 </script>
