@@ -179,6 +179,9 @@ async def get_page():
     </div>
 <script>
 var room = null, ub = null, bb = null, ld = null, muted = false, localIdentity = null;
+var userTrackSids = new Set();  // Track user's audio track SIDs
+var agentTrackSids = new Set(); // Track agent's audio track SIDs
+
 function show() { document.getElementById('hero').classList.add('hide'); document.getElementById('chat').classList.add('show'); }
 
 // Auto-resize textarea and toggle buttons
@@ -226,71 +229,90 @@ function addMsg(t, c, id) {
 function loading(on) { if (on && !ld) { ld = addMsg('<div class="dots"><span></span><span></span><span></span></div>', 'bot loading', 'ld'); } if (!on && ld) { ld.remove(); ld = null; } }
 async function startVoice() {
     show(); document.body.classList.add('calling');
+    userTrackSids.clear();
+    agentTrackSids.clear();
+
     try {
         var t = await (await fetch('/voice/token')).json();
         room = new LivekitClient.Room();
-        
-        // Store local identity when connected
+
+        // Track local participant's audio tracks (user)
         room.on('connected', function() {
             localIdentity = room.localParticipant?.identity || null;
             console.log('✅ Connected. Local identity:', localIdentity);
+
+            // Track user's audio tracks
+            room.localParticipant.audioTracks.forEach(function(pub) {
+                userTrackSids.add(pub.trackSid);
+                console.log('📍 User track:', pub.trackSid);
+            });
         });
-        
-        room.on('trackSubscribed', function(track) { if (track.kind === 'audio') { var a = track.attach(); a.volume = 1; document.body.appendChild(a); a.play(); } });
-        
-        // FIXED: Improved participant identification
+
+        // Track when user publishes new audio tracks
+        room.on('trackPublished', function(pub, participant) {
+            if (pub.kind === 'audio' && participant === room.localParticipant) {
+                userTrackSids.add(pub.trackSid);
+                console.log('📍 User published track:', pub.trackSid);
+            }
+        });
+
+        // Track agent's audio tracks
+        room.on('trackSubscribed', function(track, pub, participant) {
+            if (track.kind === 'audio') {
+                var a = track.attach();
+                a.volume = 1;
+                document.body.appendChild(a);
+                a.play();
+
+                // Track agent audio
+                agentTrackSids.add(pub.trackSid);
+                console.log('🤖 Agent track:', pub.trackSid);
+            }
+        });
+
+        // FIXED: Use track SID to identify user vs agent (workaround for LiveKit bug #3477)
         room.on('transcriptionReceived', function(segs) {
             segs.forEach(function(s) {
-                // Extract participant identity - handle multiple formats
-                var participant = s.participant;
-                var pid = null;
-                
-                // Try different ways to get identity
-                if (typeof participant === 'string') {
-                    pid = participant;
-                } else if (participant && participant.identity) {
-                    pid = participant.identity;
-                } else if (participant && participant.sid) {
-                    // Check if it matches local participant
-                    if (room.localParticipant && participant.sid === room.localParticipant.sid) {
-                        pid = room.localParticipant.identity;
-                    }
-                }
-                
-                // Determine if this is from user (local participant) or bot (agent)
-                // User identity starts with 'user_' based on token generation
+                // Get track SID from segment
+                var trackSid = s.trackSid || s.track_sid || null;
+
+                // Determine if this is user or agent based on track SID
                 var isUser = false;
-                if (pid) {
-                    // Method 1: Check if starts with 'user_'
-                    isUser = pid.startsWith('user_');
-                    // Method 2: Check if matches local participant identity
-                    if (!isUser && localIdentity) {
-                        isUser = (pid === localIdentity);
-                    }
-                    // Method 3: Check if it's NOT an agent/bot
-                    if (!isUser && (pid.includes('agent') || pid.includes('bot'))) {
-                        isUser = false;
-                    }
+                if (trackSid) {
+                    // Check if track belongs to user
+                    isUser = userTrackSids.has(trackSid);
                 } else {
-                    // If we can't determine, default to user (safer for alignment)
-                    isUser = true;
+                    // Fallback: Check participant identity (buggy but better than nothing)
+                    var participant = s.participant;
+                    var pid = null;
+
+                    if (typeof participant === 'string') {
+                        pid = participant;
+                    } else if (participant && participant.identity) {
+                        pid = participant.identity;
+                    }
+
+                    if (pid) {
+                        isUser = pid.startsWith('user_') || (localIdentity && pid === localIdentity);
+                    }
                 }
-                
-                console.log('🔍 Transcription DEBUG:', {
+
+                console.log('🔍 Transcription:', {
                     text: s.text,
-                    participant: pid,
-                    localIdentity: localIdentity,
+                    trackSid: trackSid,
                     isUser: isUser,
-                    final: s.final
+                    final: s.final,
+                    userTracks: Array.from(userTrackSids),
+                    agentTracks: Array.from(agentTrackSids)
                 });
-                
+
                 if (isUser) {
                     // USER MESSAGE - Right aligned
                     if (!ub) ub = 'u' + Date.now();
                     addMsg(s.text, 'user', ub);
                     if (s.final) { ub = null; loading(true); }
                 } else {
-                    // BOT MESSAGE - Left aligned
+                    // AGENT MESSAGE - Left aligned
                     loading(false);
                     if (!bb) bb = 'b' + Date.now();
                     addMsg(s.text, 'bot', bb);
@@ -304,7 +326,15 @@ async function startVoice() {
     } catch (e) { console.error('❌ Connection error:', e); endVoice(); }
 }
 function toggleMute() { if (!room) return; muted = !muted; room.localParticipant.setMicrophoneEnabled(!muted); document.getElementById('muteBtn').style.background = muted ? '#fff' : '#444'; document.getElementById('muteBtn').querySelector('svg').style.fill = muted ? '#000' : '#fff'; }
-function endVoice() { if (room) room.disconnect(); room = null; ub = null; bb = null; muted = false; localIdentity = null; document.body.classList.remove('calling'); document.getElementById('muteBtn').style.background = '#444'; loading(false); }
+function endVoice() {
+    if (room) room.disconnect();
+    room = null; ub = null; bb = null; muted = false; localIdentity = null;
+    userTrackSids.clear();
+    agentTrackSids.clear();
+    document.body.classList.remove('calling');
+    document.getElementById('muteBtn').style.background = '#444';
+    loading(false);
+}
 async function sendText() {
     var i = document.getElementById('inp'), q = i.value.trim();
     if (!q) return; if (room) endVoice(); show(); i.value = '';
