@@ -1,0 +1,134 @@
+/* CPS Wisdom Bot - Styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; color: #fff; font-family: -apple-system, system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Hero section */
+#hero { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; transition: opacity .3s; }
+#hero h1 { font-size: 1.8rem; margin-bottom: 10px; }
+#hero p { color: #888; }
+.hide { opacity: 0; pointer-events: none; }
+
+/* Chat container */
+#chat {
+    flex: 1; display: none; flex-direction: column; gap: 12px;
+    padding: 20px; padding-bottom: 100px; overflow-y: auto;
+    max-width: 700px; width: 100%; margin: 0 auto;
+}
+#chat.show { display: flex; }
+
+/* Messages */
+.msg {
+    padding: 12px 16px; border-radius: 18px;
+    max-width: 75%; line-height: 1.5; position: relative; word-wrap: break-word;
+    animation: fadeIn .2s;
+}
+
+/* USER: Right aligned */
+.user {
+    background: #007aff; color: white;
+    margin-left: auto; margin-right: 0;
+    border-bottom-right-radius: 4px; text-align: left;
+}
+
+/* BOT: Left aligned */
+.bot {
+    background: #2c2c2e; color: white;
+    margin-right: auto; margin-left: 0;
+    border-bottom-left-radius: 4px; text-align: left;
+}
+
+.bot p { margin: 0 0 10px 0; }
+.bot h3 { margin: 15px 0 8px 0; font-size: 1rem; color: #4a90d9; }
+.bot a { color: #4a90d9; text-decoration: underline; }
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading state */
+.loading {
+    background: linear-gradient(90deg, #2c2c2e, #3a3a4a, #2c2c2e);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Loading dots animation - FIXED */
+.dots { display: flex; gap: 4px; padding: 8px 0; }
+.dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #ff6b6b;
+    animation: bounce 1.4s infinite ease-in-out;
+}
+.dots span:nth-child(1) { animation-delay: -0.32s; }
+.dots span:nth-child(2) { animation-delay: -0.16s; }
+.dots span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+/* Input bar */
+.bar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: 90%; max-width: 600px; background: #1c1c1e; border-radius: 30px;
+    display: flex; align-items: flex-end; padding: 8px 8px 8px 20px;
+    transition: box-shadow .3s; z-index: 100;
+}
+
+/* Textarea */
+#inp {
+    flex: 1; background: none; border: none; color: #fff; font-size: 1rem;
+    outline: none; resize: none; font-family: inherit; min-height: 44px;
+    max-height: 132px; overflow-y: auto; line-height: 1.4; padding: 10px 0;
+    caret-color: #007aff;
+}
+#inp::-webkit-scrollbar { width: 4px; }
+#inp::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+/* Buttons */
+.btns { display: flex; gap: 8px; align-items: center; }
+button {
+    border: none; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: opacity .2s, transform .2s;
+}
+
+/* Send/Voice button container - stacks buttons in same position */
+.btn-stack { position: relative; width: 44px; height: 44px; }
+#sendBtn, #voiceBtn { position: absolute; top: 0; left: 0; width: 44px; height: 44px; border-radius: 50%; }
+#sendBtn { background: none; opacity: 0; transform: scale(0.8); pointer-events: none; z-index: 1; }
+#sendBtn.show { opacity: 1; transform: scale(1); pointer-events: auto; }
+#voiceBtn { background: #00c853; opacity: 1; transform: scale(1); z-index: 0; }
+#voiceBtn.hide { opacity: 0; transform: scale(0.8); pointer-events: none; }
+
+/* Call control buttons */
+#muteBtn { width: 44px; height: 44px; border-radius: 50%; background: #444; display: none; }
+#endBtn {
+    padding: 8px 16px; height: 36px; border-radius: 18px; background: #444;
+    color: #fff; font-size: 0.85rem; font-weight: 500; display: none; white-space: nowrap;
+}
+
+/* Calling state */
+.calling #sendBtn, .calling #voiceBtn { display: none; }
+.calling #muteBtn, .calling #endBtn { display: flex; }
+.calling textarea { opacity: .3; pointer-events: none; }
+.calling .bar { animation: glow 2s infinite; }
+
+@keyframes glow {
+    0% { box-shadow: 0 0 15px #ff6b6b; }
+    50% { box-shadow: 0 0 15px #a855f7; }
+    100% { box-shadow: 0 0 15px #ff6b6b; }
+}
