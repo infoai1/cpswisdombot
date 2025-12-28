@@ -272,6 +272,10 @@ async function startVoice() {
 
         // FIXED: Use track SID to identify user vs agent (workaround for LiveKit bug #3477)
         room.on('transcriptionReceived', function(segs) {
+            if (!segs || !Array.isArray(segs)) {
+                console.warn('⚠️ Invalid transcription segments:', segs);
+                return;
+            }
             segs.forEach(function(s) {
                 // Get track SID from segment
                 var trackSid = s.trackSid || s.track_sid || null;
